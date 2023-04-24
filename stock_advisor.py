@@ -48,7 +48,7 @@ def load_data(stock, look_back):
         data.append(data_raw[index: index + look_back])
 
     data = np.array(data)
-    test_set_size = int(np.round(0.25*data.shape[0]))
+    test_set_size = int(np.round(0.15*data.shape[0]))
     train_set_size = data.shape[0] - (test_set_size)
 
     x_train = data[:train_set_size, :-1, :]
@@ -108,7 +108,7 @@ model = keras.models.Sequential([
 ])
 
 model.summary()
-optimizer = keras.optimizers.SGD(lr=0.01, momentum=0.9)
+optimizer = keras.optimizers.SGD(learning_rate=0.01, momentum=0.9)
 model.compile(loss=keras.losses.Huber(),
               optimizer=optimizer,
               metrics=["mae"])
@@ -135,11 +135,17 @@ print('Test Score: %.5f RMSE' % (testScore))
 
 model = keras.models.load_model("my_checkpoint2.h5")
 
-# rnn_forecast = model.predict(series[np.newaxis, :, np.newaxis])
-# rnn_forecast = rnn_forecast[0, split_time - 1:-1, 0]
+figure, axes = plt.subplots(figsize=(15, 6))
+axes.xaxis_date()
 
-# plt.figure(figsize=(10, 6))
-# plot_series(time_valid, x_valid)
-# plot_series(time_valid, rnn_forecast)
-# plt.show()
+axes.plot(df[len(df)-len(y_test):].index, y_test,
+          color='red', label='Real GBP/USD Stock Price')
+axes.plot(df[len(df)-len(y_test):].index, y_test_pred,
+          color='blue', label='Predicted GBP/USD Stock Price')
+
+plt.title('GBP/USD Stock Price Prediction')
+plt.xlabel('Time')
+plt.ylabel('GBP/USD Stock Price')
+plt.legend()
+plt.show()
 
