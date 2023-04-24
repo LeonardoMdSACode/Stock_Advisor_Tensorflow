@@ -116,12 +116,11 @@ reset_states = ResetStatesCallback()
 model_checkpoint = keras.callbacks.ModelCheckpoint(
    "my_checkpoint2.h5", save_best_only=True)
 early_stopping = keras.callbacks.EarlyStopping(patience=50)
-model.fit(x_train, y_train, epochs=200,
+model.fit(x_train, y_train, epochs=100,
           validation_data=(x_test, y_test),
           callbacks=[early_stopping, model_checkpoint, reset_states])
 
-
-
+y_train_pred = model(x_train)
 y_test_pred = model(x_test)
 
 y_train_pred = scaler.inverse_transform(y_train_pred.detach().numpy())
@@ -149,3 +148,4 @@ plt.ylabel('GBP/USD Stock Price')
 plt.legend()
 plt.show()
 
+print(df)
