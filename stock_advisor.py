@@ -8,7 +8,7 @@ from sklearn.metrics import mean_squared_error
 import yfinance as yf
 import mplfinance as mpf
 import tensorflow as tf
-keras = tf.keras
+
 
 df = yf.download("GBPUSD=X", start="1990-01-01")
 # df.to_csv('GBPUSD.csv')
@@ -93,29 +93,29 @@ plt.axvline(x_train.shape[0], color='k', linestyle='--')
 
 # LSTM RNN
 print("LSTM RNN Model")
-keras.backend.clear_session()
+tf.keras.backend.clear_session()
 tf.random.set_seed(42)
 np.random.seed(42)
 
-class ResetStatesCallback(keras.callbacks.Callback):
+class ResetStatesCallback(tf.keras.callbacks.Callback):
    def on_epoch_begin(self, epoch, logs):
       self.model.reset_states()
 
-model = keras.models.Sequential([
-    keras.layers.Bidirectional(keras.layers.LSTM(units=32, return_sequences=True), input_shape=[None, 1]),
-    keras.layers.Bidirectional(keras.layers.LSTM(units=32, return_sequences=True)),
-    keras.layers.Dense(units=1)
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units=32, return_sequences=True), input_shape=[None, 1]),
+    tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units=32, return_sequences=True)),
+    tf.keras.layers.Dense(units=1)
 ])
 
 model.summary()
-optimizer = keras.optimizers.SGD(learning_rate=0.01, momentum=0.9)
-model.compile(loss=keras.losses.Huber(),
+optimizer = tf.keras.optimizers.SGD(learning_rate=0.01, momentum=0.9)
+model.compile(loss=tf.keras.losses.Huber(),
               optimizer=optimizer,
               metrics=["mae"])
 reset_states = ResetStatesCallback()
-model_checkpoint = keras.callbacks.ModelCheckpoint(
-   "my_checkpoint2.h5", save_best_only=True)
-early_stopping = keras.callbacks.EarlyStopping(patience=50)
+model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
+   "my_checkpoint.h5", save_best_only=True)
+early_stopping = tf.keras.callbacks.EarlyStopping(patience=50)
 model.fit(x_train, y_train, epochs=100,
           validation_data=(x_test, y_test),
           callbacks=[early_stopping, model_checkpoint, reset_states])
@@ -123,16 +123,17 @@ model.fit(x_train, y_train, epochs=100,
 y_train_pred = model(x_train)
 y_test_pred = model(x_test)
 
-y_train_pred = scaler.inverse_transform(y_train_pred.detach().numpy())
-y_train = scaler.inverse_transform(y_train.detach().numpy())
-y_test_pred = scaler.inverse_transform(y_test_pred.detach().numpy())
-y_test = scaler.inverse_transform(y_test.detach().numpy())
+y_train = scaler.inverse_transform(y_train)
+y_test = scaler.inverse_transform(y_test)
+y_train_pred = scaler.inverse_transform(y_train_pred.numpy().reshape(-1, 1))
+y_test_pred = scaler.inverse_transform(y_test_pred.numpy().reshape(-1, 1))
+
 trainScore = math.sqrt(mean_squared_error(y_train[:, 0], y_train_pred[:, 0]))
 print('Train Score: %.5f RMSE' % (trainScore))
 testScore = math.sqrt(mean_squared_error(y_test[:, 0], y_test_pred[:, 0]))
 print('Test Score: %.5f RMSE' % (testScore))
 
-model = keras.models.load_model("my_checkpoint2.h5")
+model = tf.keras.models.load_model("my_checkpoint.h5")
 
 figure, axes = plt.subplots(figsize=(15, 6))
 axes.xaxis_date()
