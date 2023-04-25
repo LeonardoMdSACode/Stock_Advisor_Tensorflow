@@ -48,12 +48,15 @@ train_data = scaler.fit_transform(train_data)
 test_data = scaler.transform(test_data)
 
 # Define the function to create time series data
+
+
 def create_dataset(data, window_size):
     X, y = [], []
     for i in range(len(data) - window_size):
         X.append(data[i:i+window_size])
         y.append(data[i+window_size])
     return np.array(X), np.array(y)
+
 
 window_size = 30
 X_train, y_train = create_dataset(train_data, window_size)
@@ -86,13 +89,17 @@ tf.keras.backend.clear_session()
 tf.random.set_seed(42)
 np.random.seed(42)
 
+
 class ResetStatesCallback(tf.keras.callbacks.Callback):
-   def on_epoch_begin(self, epoch, logs):
-      self.model.reset_states()
+    def on_epoch_begin(self, epoch, logs):
+        self.model.reset_states()
+
 
 model = tf.keras.models.Sequential([
-    tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units=32, return_sequences=True), input_shape=[window_size, 1]),
-    tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units=32, return_sequences=False)),
+    tf.keras.layers.Bidirectional(tf.keras.layers.GRU(
+        units=32, return_sequences=True), input_shape=[window_size, 1]),
+    tf.keras.layers.Bidirectional(
+        tf.keras.layers.GRU(units=32, return_sequences=False)),
     tf.keras.layers.Dense(units=1)
 ])
 
@@ -103,11 +110,11 @@ model.compile(loss=tf.keras.losses.Huber(),
               metrics=["mae"])
 reset_states = ResetStatesCallback()
 model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
-   "my_checkpoint.h5", save_best_only=True)
+    "my_checkpoint.h5", save_best_only=True)
 early_stopping = tf.keras.callbacks.EarlyStopping(patience=50)
-history = model.fit(X_train, y_train, epochs=100,
-          validation_data=(X_test, y_test),
-          callbacks=[early_stopping, model_checkpoint, reset_states])
+history = model.fit(X_train, y_train, epochs=200,
+                    validation_data=(X_test, y_test),
+                    callbacks=[early_stopping, model_checkpoint, reset_states])
 
 model = tf.keras.models.load_model("my_checkpoint.h5")
 
@@ -121,6 +128,8 @@ train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
 print('Train Score: %.5f RMSE' % train_rmse)
 test_rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 print('Test Score: %.5f RMSE' % test_rmse)
+# Train Score: 0.01391 RMSE
+# Test Score: 0.01164 RMSE
 
 
 figure, axes = plt.subplots(figsize=(15, 6))
@@ -138,3 +147,55 @@ plt.legend()
 plt.show()
 
 print(df)
+
+
+# Predict the behavior Close price in the next 30 days
+last_30_days = test_data[-30:]
+
+# Create an empty list to store the predicted prices
+predicted_prices = []
+
+# Predict the next day's price for 30 days
+for i in range(30):
+    # Reshape the data to be 3D
+    X_test_new = np.reshape(last_30_days, (1, window_size, 1))
+    # Make the prediction
+    y_pred_new = model.predict(X_test_new)
+    # Append the predicted price to the list
+    predicted_prices.append(y_pred_new[0, 0])
+    # Shift the window by one day and append the predicted price to last_30_days
+    last_30_days = np.append(last_30_days[1:], y_pred_new)
+
+# Convert the predicted prices back to their original scale
+predicted_prices = scaler.inverse_transform(
+    np.array(predicted_prices).reshape(-1, 1))
+
+# Create a date range for the next 30 days
+last_date = df.index[-1]
+date_range = pd.date_range(last_date, periods=31, freq='D')[1:]
+
+# Create a DataFrame for the predicted prices
+predicted_df = pd.DataFrame(predicted_prices, columns=[
+                            'Close'], index=date_range)
+
+# Append the predicted prices to the original DataFrame
+df_merged = pd.concat([df, predicted_df])
+
+# df_merged.to_csv('stock_data_predicted.csv')
+print(df_merged.tail(31))
+
+
+# Showcase the predicted future prices
+figure, axes = plt.subplots(figsize=(15, 6))
+axes.xaxis_date()
+
+axes.plot(df[len(df)-90:].index, df[len(df)-90:]['Close'],
+          color='red', label='Real GBP/USD Stock Price')
+axes.plot(df_merged[len(df_merged)-30:].index, df_merged[len(df_merged)-30:]['Close'],
+          color='blue', label='Predicted GBP/USD Stock Price')
+
+plt.title('GBP/USD Stock Price Prediction')
+plt.xlabel('Time')
+plt.ylabel('GBP/USD Stock Price')
+plt.legend()
+plt.show()
