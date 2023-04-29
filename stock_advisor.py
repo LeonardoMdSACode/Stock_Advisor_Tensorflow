@@ -112,7 +112,7 @@ reset_states = ResetStatesCallback()
 model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
     "my_checkpoint.h5", save_best_only=True)
 early_stopping = tf.keras.callbacks.EarlyStopping(patience=50)
-history = model.fit(X_train, y_train, epochs=200,
+history = model.fit(X_train, y_train, epochs=100,
                     validation_data=(X_test, y_test),
                     callbacks=[early_stopping, model_checkpoint, reset_states])
 
